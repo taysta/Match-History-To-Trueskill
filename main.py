@@ -2,41 +2,48 @@ import requests
 from trueskill import Rating, rate
 from prettytable import PrettyTable
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 import pytz
+import os
+import json
 
-# Input variables
-domain = "http://50.116.36.119"
-server_id = "231050003500498945"
-time = "1706338920000"
+# Load environment variables from .env file
+load_dotenv()
+
+# Inputs
+domain = os.getenv("DOMAIN")
+server_id = os.getenv("SERVER_ID")
+time = os.getenv("DATE_START")
 
 # Timezone
-timezone = pytz.timezone('Australia/Sydney')
+timezone_in = os.getenv("TIMEZONE")
+timezone = pytz.timezone(timezone_in)
 
 # Alias mappings
-user_aliases = {
-    'dose/lr_au': ['286657365829353472', '511273939989823518'],
-    'mlmtn/oatree': ['238214135769202688', '1236672578387705892']
-}
+user_aliases = json.loads(os.getenv("ALIASED_PLAYERS"))
 
-# Minimum number of games required to appear in the table
-min_games_required = 10
+# Playtime filtering
+min_games_required = int(os.getenv("MINIMUM_GAMES_REQUIRED"))
+
+# Activity filtering
+last_days_threshold = int(os.getenv("LAST_DAYS_THRESHOLD"))  # Threshold of Y days
+min_games_last_days = int(os.getenv("MINIMUM_GAMES_LAST_DAYS"))  # Minimum number of games played in the last Y days
 
 # Discard ties
-discard_ties = True
+discard_ties = os.getenv("DISCARD_TIES") == 'True'
 
-# Sigma decay settings
-decay_enabled = False
-decay_amount = 0.022831050228310504
-grace_days = 0
-max_decay_proportion = 0.5
-default_sigma = 8.333  # Default sigma value for TrueSkill
+# Sigma decay
+decay_enabled = os.getenv("DECAY_ENABLED") == 'True'
+decay_amount = float(os.getenv("DECAY_AMOUNT"))
+grace_days = int(os.getenv("DECAY_GRACE_DAYS"))
+max_decay_proportion = float(os.getenv("MAX_DECAY_PROPORTION"))
+
+# Trueskill
+default_sigma = float(os.getenv("TS_DEFAULT_SIGMA"))  # Default sigma value for TrueSkill
+default_mu = float(os.getenv("TS_DEFAULT_MU"))  # Default mu value for TrueSkill
 
 # Counter for games used
 games_used_count = 0
-
-# Activity filtering settings
-min_games_last_days = 0  # Minimum number of games played in the last Y days
-last_days_threshold = 0  # Threshold of Y days
 
 # Construct the URL from the input variables
 url = f"{domain}/api/server/{server_id}/games/{time}"
@@ -122,7 +129,7 @@ def process_game(in_game, in_played_dates):
         if in_primary_id not in player_ratings:
             player_ratings[in_primary_id] = {
                 'name': user_name,
-                'rating': Rating(),
+                'rating': Rating(mu=default_mu, sigma=default_sigma),
                 'games_played': 0,
                 'wins': 0,
                 'losses': 0,
@@ -238,7 +245,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
 
     print(f"Input URL: {in_url}")
     print(f"Server ID: {in_server_id}")
-    print(f"Games period: {in_start_date_str} to {in_end_date_str}")
+    print(f"Games period: From {in_start_date_str} to {in_end_date_str}")
     print(f"Games used: {games_used_count}")
     print(table)
     print(f"Rating decay: {decay_settings if in_decay_enabled else 'Disabled'}")
@@ -250,7 +257,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
 def run():
     # Convert the time variable to a human-readable date string
     start_date_str = datetime.fromtimestamp(int(time) / 1000, timezone).strftime('%Y-%m-%d')
-    end_date_str = datetime.now(timezone).strftime('%Y-%m-%d %I:%M %p %Z')
+    end_date_str = datetime.now(timezone).strftime('%Y-%m-%d 7:00 PM %Z')
 
     games = fetch_game_data(url)
 
