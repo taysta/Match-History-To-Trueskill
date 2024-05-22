@@ -257,7 +257,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
 def run():
     # Convert the time variable to a human-readable date string
     start_date_str = datetime.fromtimestamp(int(time) / 1000, timezone).strftime('%Y-%m-%d')
-    end_date_str = datetime.now(timezone).strftime('%Y-%m-%d 7:00 PM %Z')
+    end_date_str = datetime.now(timezone).strftime('%Y-%m-%d %I:%M %p %Z')
 
     games = fetch_game_data(url)
 
