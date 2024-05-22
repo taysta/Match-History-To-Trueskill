@@ -221,6 +221,8 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
         table.field_names = ["Rank", "Name", "Trueskill Rating (μ - 3*σ)", "μ (mu)", "σ (sigma)", "Games Played",
                              "Win/Loss", "Last Played", "Avg Pick Order"]
 
+    rows = []
+
     for rank, player in enumerate(sorted_players, start=1):
         in_primary_id = player[0]
         rating = player[1]['rating']
@@ -233,8 +235,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
 
         if verbose_output:
             associated_ids = get_associated_ids(in_primary_id)
-
-            table.add_row([
+            row = [
                 rank,
                 display_name,
                 f"{rating.mu - 3 * rating.sigma:.2f}",  # Conservative rating estimate
@@ -245,9 +246,9 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
                 last_played,
                 f"{avg_pick_order:.2f}",
                 associated_ids
-            ])
+            ]
         else:
-            table.add_row([
+            row = [
                 rank,
                 display_name,
                 f"{rating.mu - 3 * rating.sigma:.2f}",  # Conservative rating estimate
@@ -256,8 +257,10 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
                 games_played,
                 f"{wins}/{losses}",
                 last_played,
-                f"{avg_pick_order:.2f}",
-            ])
+                f"{avg_pick_order:.2f}"
+            ]
+        rows.append(row)
+        table.add_row(row)
 
     decay_settings = ""
     if in_decay_enabled:
@@ -265,7 +268,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
                           f"grace_days={grace_days}, "
                           f"max_decay_proportion={max_decay_proportion}")
 
-    # Print the output
+    # Print the output to console
     if verbose_output:
         print(f"Input URL: {in_url}")
         print(f"Server ID: {in_server_id}")
@@ -277,6 +280,28 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
     print(f"Minimum games required: {in_min_games_required} ({len(filtered_players)} players filtered)")
     print(f"Ties discarded: {in_discard_ties}")
     print(f"Aliased player/s: {', '.join(user_aliases.keys())}")
+
+    # Save the table to a text file
+    with open("player_ratings.txt", "w") as text_file:
+        if verbose_output:
+            text_file.write(f"Input URL: {in_url}\n")
+            text_file.write(f"Server ID: {in_server_id}\n")
+        text_file.write(f"Games period: From {in_start_date_str} to {in_end_date_str}\n")
+        text_file.write(f"Games used: {games_used_count}\n")
+        text_file.write(str(table))
+        text_file.write(f"\nRating decay: {decay_settings if in_decay_enabled else 'Disabled'}\n")
+        text_file.write(f"Minimum games required: {in_min_games_required} ({len(filtered_players)} players filtered)\n")
+        text_file.write(f"Ties discarded: {in_discard_ties}\n")
+        text_file.write(f"Aliased player/s: {', '.join(user_aliases.keys())}\n")
+
+    # Save the table to a CSV file
+    with open("player_ratings.csv", "w") as csv_file:
+        if verbose_output:
+            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,Win/Loss,Last Played,Avg Pick Order,Discord ID/s\n")
+        else:
+            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,Win/Loss,Last Played,Avg Pick Order\n")
+        for row in rows:
+            csv_file.write(",".join(map(str, row)) + "\n")
 
 
 def run():
