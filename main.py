@@ -42,6 +42,9 @@ max_decay_proportion = float(os.getenv("MAX_DECAY_PROPORTION"))
 default_sigma = float(os.getenv("TS_DEFAULT_SIGMA"))
 default_mu = float(os.getenv("TS_DEFAULT_MU"))
 
+# Verbosity
+verbose_output = os.getenv("VERBOSE_OUTPUT") == 'True'
+
 # Counter for games used
 games_used_count = 0
 
@@ -210,8 +213,13 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
                             reverse=True)
 
     table = PrettyTable()
-    table.field_names = ["Rank", "Name", "Trueskill Rating (μ - 3*σ)", "μ (mu)", "σ (sigma)", "Games Played",
-                         "Win/Loss", "Last Played", "Avg Pick Order", "Discord ID/s"]
+
+    if verbose_output:
+        table.field_names = ["Rank", "Name", "Trueskill Rating (μ - 3*σ)", "μ (mu)", "σ (sigma)", "Games Played",
+                             "Win/Loss", "Last Played", "Avg Pick Order", "Discord ID/s"]
+    else:
+        table.field_names = ["Rank", "Name", "Trueskill Rating (μ - 3*σ)", "μ (mu)", "σ (sigma)", "Games Played",
+                             "Win/Loss", "Last Played", "Avg Pick Order"]
 
     for rank, player in enumerate(sorted_players, start=1):
         in_primary_id = player[0]
@@ -222,20 +230,34 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
         last_played = player[1]['last_played'].strftime('%Y-%m-%d')
         avg_pick_order = player[1]['avg_pick_order']
         display_name = get_display_name(in_primary_id)
-        associated_ids = get_associated_ids(in_primary_id)
 
-        table.add_row([
-            rank,
-            display_name,
-            f"{rating.mu - 3 * rating.sigma:.2f}",  # Conservative rating estimate
-            f"{rating.mu:.2f}",
-            f"{rating.sigma:.2f}",
-            games_played,
-            f"{wins}/{losses}",
-            last_played,
-            f"{avg_pick_order:.2f}",
-            associated_ids
-        ])
+        if verbose_output:
+            associated_ids = get_associated_ids(in_primary_id)
+
+            table.add_row([
+                rank,
+                display_name,
+                f"{rating.mu - 3 * rating.sigma:.2f}",  # Conservative rating estimate
+                f"{rating.mu:.2f}",
+                f"{rating.sigma:.2f}",
+                games_played,
+                f"{wins}/{losses}",
+                last_played,
+                f"{avg_pick_order:.2f}",
+                associated_ids
+            ])
+        else:
+            table.add_row([
+                rank,
+                display_name,
+                f"{rating.mu - 3 * rating.sigma:.2f}",  # Conservative rating estimate
+                f"{rating.mu:.2f}",
+                f"{rating.sigma:.2f}",
+                games_played,
+                f"{wins}/{losses}",
+                last_played,
+                f"{avg_pick_order:.2f}",
+            ])
 
     decay_settings = ""
     if in_decay_enabled:
@@ -244,8 +266,10 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
                           f"max_decay_proportion={max_decay_proportion}")
 
     # Print the output
-    print(f"Input URL: {in_url}")
-    print(f"Server ID: {in_server_id}")
+    if verbose_output:
+        print(f"Input URL: {in_url}")
+        print(f"Server ID: {in_server_id}")
+
     print(f"Games period: From {in_start_date_str} to {in_end_date_str}")
     print(f"Games used: {games_used_count}")
     print(table)
