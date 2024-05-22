@@ -26,8 +26,8 @@ user_aliases = json.loads(os.getenv("ALIASED_PLAYERS"))
 min_games_required = int(os.getenv("MINIMUM_GAMES_REQUIRED"))
 
 # Activity filtering
-last_days_threshold = int(os.getenv("LAST_DAYS_THRESHOLD"))  # Threshold of Y days
-min_games_last_days = int(os.getenv("MINIMUM_GAMES_LAST_DAYS"))  # Minimum number of games played in the last Y days
+last_days_threshold = int(os.getenv("LAST_DAYS_THRESHOLD"))
+min_games_last_days = int(os.getenv("MINIMUM_GAMES_LAST_DAYS"))
 
 # Discard ties
 discard_ties = os.getenv("DISCARD_TIES") == 'True'
@@ -39,8 +39,8 @@ grace_days = int(os.getenv("DECAY_GRACE_DAYS"))
 max_decay_proportion = float(os.getenv("MAX_DECAY_PROPORTION"))
 
 # Trueskill
-default_sigma = float(os.getenv("TS_DEFAULT_SIGMA"))  # Default sigma value for TrueSkill
-default_mu = float(os.getenv("TS_DEFAULT_MU"))  # Default mu value for TrueSkill
+default_sigma = float(os.getenv("TS_DEFAULT_SIGMA"))
+default_mu = float(os.getenv("TS_DEFAULT_MU"))
 
 # Counter for games used
 games_used_count = 0
@@ -85,7 +85,7 @@ def get_associated_ids(in_primary_id):
 def apply_sigma_decay(player, inactivity_days):
     if decay_enabled and inactivity_days > grace_days:
         max_sigma_increase = default_sigma * max_decay_proportion - player['rating'].sigma
-        if max_sigma_increase > 0:  # Ensure that we only apply positive increments
+        if max_sigma_increase > 0:
             total_decay = min(decay_amount * inactivity_days, max_sigma_increase)
             new_sigma = player['rating'].sigma + total_decay
             player['rating'] = Rating(mu=player['rating'].mu, sigma=new_sigma)
@@ -138,7 +138,7 @@ def process_game(in_game, in_played_dates):
                 'total_pick_order': 0,
                 'pick_order_count': 0,
                 'avg_pick_order': 0.0,
-                'recent_games': 0  # Track recent games played
+                'recent_games': 0
             }
 
         player_ratings[in_primary_id]['games_played'] += 1
@@ -243,6 +243,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
                           f"grace_days={grace_days}, "
                           f"max_decay_proportion={max_decay_proportion}")
 
+    # Print the output
     print(f"Input URL: {in_url}")
     print(f"Server ID: {in_server_id}")
     print(f"Games period: From {in_start_date_str} to {in_end_date_str}")
