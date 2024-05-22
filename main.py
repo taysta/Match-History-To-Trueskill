@@ -179,7 +179,8 @@ def process_game(in_game, in_played_dates):
 
 
 # Function to sort and display player ratings in a table
-def display_ratings(in_server_id, in_date_str, in_min_games_required, in_discard_ties, in_url, in_decay_enabled):
+def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_games_required, in_discard_ties, in_url,
+                    in_decay_enabled):
     current_date = datetime.now(timezone).date()
     start_date_threshold = current_date - timedelta(days=last_days_threshold)
 
@@ -237,7 +238,7 @@ def display_ratings(in_server_id, in_date_str, in_min_games_required, in_discard
 
     print(f"Input URL: {in_url}")
     print(f"Server ID: {in_server_id}")
-    print(f"Games after: {in_date_str}")
+    print(f"Games period: {in_start_date_str} to {in_end_date_str}")
     print(f"Games used: {games_used_count}")
     print(table)
     print(f"Rating decay: {decay_settings if in_decay_enabled else 'Disabled'}")
@@ -248,7 +249,8 @@ def display_ratings(in_server_id, in_date_str, in_min_games_required, in_discard
 
 def run():
     # Convert the time variable to a human-readable date string
-    date_str = datetime.fromtimestamp(int(time) / 1000, timezone).strftime('%Y-%m-%d')
+    start_date_str = datetime.fromtimestamp(int(time) / 1000, timezone).strftime('%Y-%m-%d')
+    end_date_str = datetime.now(timezone).strftime('%Y-%m-%d %I:%M %p %Z')
 
     games = fetch_game_data(url)
 
@@ -271,7 +273,7 @@ def run():
                         apply_sigma_decay(player_ratings[primary_id], days_inactive)
         previous_date = date
 
-    display_ratings(server_id, date_str, min_games_required, discard_ties, url, decay_enabled)
+    display_ratings(server_id, start_date_str, end_date_str, min_games_required, discard_ties, url, decay_enabled)
 
 
 # Run the program
