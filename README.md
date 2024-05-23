@@ -1,4 +1,4 @@
-# Parses JSON match history of team games into TrueSkill data
+# Turn team game match history into TrueSkill data
 
 ## Running 
 1. Have python installed
@@ -13,7 +13,7 @@
 - If there is a large disparity of player skill it can often means unbalanced matches
 - If there is a small time period of recorded games and/or a small sample size of games the results can be less reliable
 - Pick order is not currently factored into the rating, and we dont know what advantage/disadvantage being under/over/accurately picked gives
-- I'm no pro coder or statistician so i may have messed up at some point, if you think thats the case feel free to create a pull request or issue
+- I'm not a professional coder or statistician, so I may have messed up at some point, if you think thats the case feel free to create a pull request or issue
 - This was a quick and dirty project (no test harness, lack of error handling, not all use cases tested etc..)
 
 ## Sample game (Required format)
