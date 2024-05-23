@@ -26,6 +26,8 @@ parser.add_argument('--ts_default_sigma', type=float, help='Default sigma for Tr
 parser.add_argument('--ts_default_mu', type=float, help='Default mu for TrueSkill')
 parser.add_argument('--verbose_output', action='store_true', help='Enable verbose output')
 parser.add_argument('--top_x', type=int, default=0, help='Show top X players (0 for all)')
+parser.add_argument('--write_txt', action='store_true', help='Write output to text file')
+parser.add_argument('--write_csv', action='store_true', help='Write output to CSV file')
 
 args = parser.parse_args()
 
@@ -69,6 +71,10 @@ default_mu = args.ts_default_mu or float(os.getenv("TS_DEFAULT_MU"))
 
 # Verbosity
 verbose_output = args.verbose_output or os.getenv("VERBOSE_OUTPUT") == 'True'
+
+# File writing settings
+write_txt = args.write_txt or os.getenv("WRITE_TXT") == 'True'
+write_csv = args.write_csv or os.getenv("WRITE_CSV") == 'True'
 
 # Counter for games used
 games_used_count = 0
@@ -310,37 +316,41 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
     print(table)
     print(f"Sigma decay: {decay_settings if in_decay_enabled else 'Disabled'}")
     print(f"Minimum games required: {in_min_games_required} ({len(filtered_players)} players filtered)")
-    print(f"Ties discarded: {in_discard_ties}")
-    print(f"Aliased player/s: {', '.join(user_aliases.keys())}")
 
     if in_top_x > 0:
         print(f"Showing top {in_top_x} players ({cutoff_count} cutoff)")
 
-    # Save the table to a text file
-    with open("player_ratings.txt", "w") as text_file:
-        if verbose_output:
-            text_file.write(f"Input URL: {in_url}\n")
-            text_file.write(f"Server ID: {in_server_id}\n")
-        text_file.write(f"Games period: From {in_start_date_str} to {in_end_date_str}\n")
-        text_file.write(f"Games used: {games_used_count}\n")
-        text_file.write(str(table))
-        text_file.write(f"\nRating decay: {decay_settings if in_decay_enabled else 'Disabled'}\n")
-        text_file.write(f"Minimum games required: {in_min_games_required} ({len(filtered_players)} players filtered)\n")
-        if in_top_x > 0:
-            text_file.write(f"Showing top {in_top_x} players ({cutoff_count} cutoff)\n")
-        text_file.write(f"Ties discarded: {in_discard_ties}\n")
-        text_file.write(f"Aliased player/s: {', '.join(user_aliases.keys())}\n")
+    print(f"Ties discarded: {in_discard_ties}")
+    print(f"Aliased player/s: {', '.join(user_aliases.keys())}")
 
-    # Save the table to a CSV file
-    with open("player_ratings.csv", "w") as csv_file:
-        if verbose_output:
-            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
-                           "Win/Loss,Last Played,Avg Pick Order,Discord ID/s\n")
-        else:
-            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
-                           "Win/Loss,Last Played,Avg Pick Order\n")
-        for row in rows:
-            csv_file.write(",".join(map(str, row)) + "\n")
+    # Save the table to a text file if enabled
+    if write_txt:
+        with open("player_ratings.txt", "w") as text_file:
+            if verbose_output:
+                text_file.write(f"Input URL: {in_url}\n")
+                text_file.write(f"Server ID: {in_server_id}\n")
+            text_file.write(f"Games period: From {in_start_date_str} to {in_end_date_str}\n")
+            text_file.write(f"Games used: {games_used_count}\n")
+            text_file.write(str(table))
+            text_file.write(f"\nRating decay: {decay_settings if in_decay_enabled else 'Disabled'}\n")
+            text_file.write(f"Minimum games required: {in_min_games_required} "
+                            f"({len(filtered_players)} players filtered)\n")
+            if in_top_x > 0:
+                text_file.write(f"Showing top {in_top_x} players ({cutoff_count} cutoff)\n")
+            text_file.write(f"Ties discarded: {in_discard_ties}\n")
+            text_file.write(f"Aliased player/s: {', '.join(user_aliases.keys())}\n")
+
+    # Save the table to a CSV file if enabled
+    if write_csv:
+        with open("player_ratings.csv", "w") as csv_file:
+            if verbose_output:
+                csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
+                               "Win/Loss,Last Played,Avg Pick Order,Discord ID/s\n")
+            else:
+                csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
+                               "Win/Loss,Last Played,Avg Pick Order\n")
+            for row in rows:
+                csv_file.write(",".join(map(str, row)) + "\n")
 
 
 def run():
