@@ -1,22 +1,23 @@
-# Turns json list of team pick games into TrueSkill data 
+# Parses JSON match history of team games into TrueSkill data
 
 ## Running 
-1. have python installed
-2. get script library dependencies: `pip install prettytable python-dotenv pytz requests trueskill`
-3. copy `.env.example` named as `.env` and fill out the required api information or alternatively the json filename if not using api 
-4. `py main.py` to run the program, can also pass some arguments listed at the top of main.py to override env file settings
+1. Have python installed
+2. Get script library dependencies: `pip install prettytable python-dotenv pytz requests trueskill`
+3. Copy `.env.example` named as `.env` and fill out the required api information or alternatively the JSON filename if not using api 
+4. Run `py main.py` in a terminal to run the program, you can also pass some arguments listed at the top of `main.py` to override `.env` file settings
 
 ## Disclaimer
-- the output table would be constantly changing so should simply be treated as an arbitrary snapshot in time
-- there is no consideration of your individual performance in that match, only winloss
-- there is no consideration of what position you played, how good you are at that position, etc
-- if there is a large disparity of player skill it can often means unbalanced matches
-- if there is a small time period of recorded games and/or a small sample size of games the results can be less reliable
-- pick order is not currently factored into the rating, and we dont know what advantage/disadvantage being under/over/accurately picked gives
-- im no pro coder or statistician so i may have messed up at some point, if you think thats the case feel free to create a pull request or issue
-- this was a quick and dirty project (no test harness, lack of error handling, not all use cases tested etc..)
+- The output table would be constantly changing so should simply be treated as an arbitrary snapshot in time
+- There is no consideration of your individual performance in that match, only winloss
+- There is no consideration of what position you played, how good you are at that position, etc
+- If there is a large disparity of player skill it can often means unbalanced matches
+- If there is a small time period of recorded games and/or a small sample size of games the results can be less reliable
+- Pick order is not currently factored into the rating, and we dont know what advantage/disadvantage being under/over/accurately picked gives
+- I'm no pro coder or statistician so i may have messed up at some point, if you think thats the case feel free to create a pull request or issue
+- This was a quick and dirty project (no test harness, lack of error handling, not all use cases tested etc..)
 
 ## Sample game (Required format)
+- Pick order, captain is irrelevant to trueskill, completionTimestamp is unused, and it should be okay to set all of these to 0 in your json file/api if you don't have that data available
 ```
 {
 	"timestamp": 1541469560890,
