@@ -8,8 +8,8 @@
 
 ## Disclaimer
 - The output table would be constantly changing so should simply be treated as an arbitrary snapshot in time
-- There is no consideration of your individual performance in that match, only winloss
-- There is no consideration of what position you played, how good you are at that position, etc
+- There is no consideration of individual performance in that match, only winloss
+- There is no consideration of what positions were played, how good players are at that position, etc
 - If there is a large disparity of player skill it can often means unbalanced matches
 - If there is a small time period of recorded games and/or a small sample size of games the results can be less reliable
 - Pick order is not currently factored into the rating, and we dont know what advantage/disadvantage being under/over/accurately picked gives
