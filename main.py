@@ -1,3 +1,4 @@
+import argparse
 import requests
 from trueskill import Rating, rate
 from prettytable import PrettyTable
@@ -7,43 +8,67 @@ import pytz
 import os
 import json
 
+# Command-line arguments parsing
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('--domain', type=str, help='API domain')
+parser.add_argument('--server_id', type=str, help='Server ID')
+parser.add_argument('--date_start', type=str, help='Start date in timestamp')
+parser.add_argument('--timezone', type=str, help='Timezone')
+parser.add_argument('--min_games', type=int, help='Minimum games required')
+parser.add_argument('--last_days_threshold', type=int, help='Last days threshold')
+parser.add_argument('--min_games_last_days', type=int, help='Minimum games in last days')
+parser.add_argument('--discard_ties', action='store_true', help='Discard ties')
+parser.add_argument('--decay_enabled', action='store_true', help='Enable sigma decay')
+parser.add_argument('--decay_amount', type=float, help='Decay amount')
+parser.add_argument('--grace_days', type=int, help='Grace days for decay')
+parser.add_argument('--max_decay_proportion', type=float, help='Max decay proportion')
+parser.add_argument('--ts_default_sigma', type=float, help='Default sigma for TrueSkill')
+parser.add_argument('--ts_default_mu', type=float, help='Default mu for TrueSkill')
+parser.add_argument('--verbose_output', action='store_true', help='Enable verbose output')
+parser.add_argument('--top_x', type=int, default=0, help='Show top X players (0 for all)')
+
+args = parser.parse_args()
+
 # Load environment variables from .env file
 load_dotenv()
 
-# Inputs
-domain = os.getenv("DOMAIN")
-server_id = os.getenv("SERVER_ID")
-time = os.getenv("DATE_START")
+# Inputs (override with command-line arguments if provided)
+domain = args.domain or os.getenv("DOMAIN")
+server_id = args.server_id or os.getenv("SERVER_ID")
+time = args.date_start or os.getenv("DATE_START")
 
 # Timezone
-timezone_in = os.getenv("TIMEZONE")
+timezone_in = args.timezone or os.getenv("TIMEZONE")
 timezone = pytz.timezone(timezone_in)
 
 # Alias mappings
 user_aliases = json.loads(os.getenv("ALIASED_PLAYERS"))
 
 # Playtime filtering
-min_games_required = int(os.getenv("MINIMUM_GAMES_REQUIRED"))
+min_games_required = args.min_games or int(os.getenv("MINIMUM_GAMES_REQUIRED"))
 
 # Activity filtering
-last_days_threshold = int(os.getenv("LAST_DAYS_THRESHOLD"))
-min_games_last_days = int(os.getenv("MINIMUM_GAMES_LAST_DAYS"))
+last_days_threshold = args.last_days_threshold or int(os.getenv("LAST_DAYS_THRESHOLD"))
+min_games_last_days = args.min_games_last_days or int(os.getenv("MINIMUM_GAMES_LAST_DAYS"))
+
+# Top X players filtering
+top_x = args.top_x or int(os.getenv("TOP_X_CUTOFF"))
 
 # Discard ties
-discard_ties = os.getenv("DISCARD_TIES") == 'True'
+discard_ties = args.discard_ties or os.getenv("DISCARD_TIES") == 'True'
 
 # Sigma decay
-decay_enabled = os.getenv("DECAY_ENABLED") == 'True'
-decay_amount = float(os.getenv("DECAY_AMOUNT"))
-grace_days = int(os.getenv("DECAY_GRACE_DAYS"))
-max_decay_proportion = float(os.getenv("MAX_DECAY_PROPORTION"))
+decay_enabled = args.decay_enabled or os.getenv("DECAY_ENABLED") == 'True'
+decay_amount = args.decay_amount or float(os.getenv("DECAY_AMOUNT"))
+grace_days = args.grace_days or int(os.getenv("DECAY_GRACE_DAYS"))
+max_decay_proportion = args.max_decay_proportion or float(os.getenv("MAX_DECAY_PROPORTION"))
 
 # Trueskill
-default_sigma = float(os.getenv("TS_DEFAULT_SIGMA"))
-default_mu = float(os.getenv("TS_DEFAULT_MU"))
+default_sigma = args.ts_default_sigma or float(os.getenv("TS_DEFAULT_SIGMA"))
+default_mu = args.ts_default_mu or float(os.getenv("TS_DEFAULT_MU"))
 
 # Verbosity
-verbose_output = os.getenv("VERBOSE_OUTPUT") == 'True'
+verbose_output = args.verbose_output or os.getenv("VERBOSE_OUTPUT") == 'True'
 
 # Counter for games used
 games_used_count = 0
@@ -190,7 +215,7 @@ def process_game(in_game, in_played_dates):
 
 # Function to sort and display player ratings in a table
 def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_games_required, in_discard_ties, in_url,
-                    in_decay_enabled):
+                    in_decay_enabled, in_top_x):
     current_date = datetime.now(timezone).date()
     start_date_threshold = current_date - timedelta(days=last_days_threshold)
 
@@ -211,6 +236,13 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
     # Sort players by their conservative TrueSkill rating (mu - 3 * sigma)
     sorted_players = sorted(filtered_players.items(), key=lambda x: x[1]['rating'].mu - 3 * x[1]['rating'].sigma,
                             reverse=True)
+
+    # Calculate the number of players below the cutoff
+    cutoff_count = max(0, len(sorted_players) - in_top_x) if in_top_x > 0 else 0
+
+    # Limit the number of players to display if in_top_x is greater than 0
+    if in_top_x > 0:
+        sorted_players = sorted_players[:in_top_x]
 
     table = PrettyTable()
 
@@ -276,10 +308,13 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
     print(f"Games period: From {in_start_date_str} to {in_end_date_str}")
     print(f"Games used: {games_used_count}")
     print(table)
-    print(f"Rating decay: {decay_settings if in_decay_enabled else 'Disabled'}")
+    print(f"Sigma decay: {decay_settings if in_decay_enabled else 'Disabled'}")
     print(f"Minimum games required: {in_min_games_required} ({len(filtered_players)} players filtered)")
     print(f"Ties discarded: {in_discard_ties}")
     print(f"Aliased player/s: {', '.join(user_aliases.keys())}")
+
+    if in_top_x > 0:
+        print(f"Showing top {in_top_x} players ({cutoff_count} cutoff)")
 
     # Save the table to a text file
     with open("player_ratings.txt", "w") as text_file:
@@ -291,15 +326,19 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
         text_file.write(str(table))
         text_file.write(f"\nRating decay: {decay_settings if in_decay_enabled else 'Disabled'}\n")
         text_file.write(f"Minimum games required: {in_min_games_required} ({len(filtered_players)} players filtered)\n")
+        if in_top_x > 0:
+            text_file.write(f"Showing top {in_top_x} players ({cutoff_count} cutoff)\n")
         text_file.write(f"Ties discarded: {in_discard_ties}\n")
         text_file.write(f"Aliased player/s: {', '.join(user_aliases.keys())}\n")
 
     # Save the table to a CSV file
     with open("player_ratings.csv", "w") as csv_file:
         if verbose_output:
-            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,Win/Loss,Last Played,Avg Pick Order,Discord ID/s\n")
+            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
+                           "Win/Loss,Last Played,Avg Pick Order,Discord ID/s\n")
         else:
-            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,Win/Loss,Last Played,Avg Pick Order\n")
+            csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
+                           "Win/Loss,Last Played,Avg Pick Order\n")
         for row in rows:
             csv_file.write(",".join(map(str, row)) + "\n")
 
@@ -330,7 +369,8 @@ def run():
                         apply_sigma_decay(player_ratings[primary_id], days_inactive)
         previous_date = date
 
-    display_ratings(server_id, start_date_str, end_date_str, min_games_required, discard_ties, url, decay_enabled)
+    display_ratings(
+        server_id, start_date_str, end_date_str, min_games_required, discard_ties, url, decay_enabled, top_x)
 
 
 # Run the program
