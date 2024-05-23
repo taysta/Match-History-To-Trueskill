@@ -28,6 +28,7 @@ parser.add_argument('--verbose_output', action='store_true', help='Enable verbos
 parser.add_argument('--top_x', type=int, default=0, help='Show top X players (0 for all)')
 parser.add_argument('--write_txt', action='store_true', help='Write output to text file')
 parser.add_argument('--write_csv', action='store_true', help='Write output to CSV file')
+parser.add_argument('--json_file', type=str, help='Path to JSON file containing game data')
 
 args = parser.parse_args()
 
@@ -76,6 +77,9 @@ verbose_output = args.verbose_output or os.getenv("VERBOSE_OUTPUT") == 'True'
 write_txt = args.write_txt or os.getenv("WRITE_TXT") == 'True'
 write_csv = args.write_csv or os.getenv("WRITE_CSV") == 'True'
 
+# JSON file path
+json_file = args.json_file or os.getenv("JSON_FILENAME")
+
 # Counter for games used
 games_used_count = 0
 
@@ -86,12 +90,18 @@ url = f"{domain}/api/server/{server_id}/games/{time}"
 player_ratings = {}
 
 
+# Function to fetch game data from the API
 def fetch_game_data(in_url):
     response = requests.get(in_url)
     if response.status_code == 200:
         return response.json()
     else:
         raise Exception(f"Failed to fetch data: {response.status_code}")
+
+
+def read_game_data_from_file(file_path):
+    with open(file_path, 'r') as file:
+        return json.load(file)
 
 
 def get_primary_id(user_id):
@@ -353,7 +363,11 @@ def run():
     start_date_str = datetime.fromtimestamp(int(time) / 1000, timezone).strftime('%Y-%m-%d')
     end_date_str = datetime.now(timezone).strftime('%Y-%m-%d %I:%M %p %Z')
 
-    games = fetch_game_data(url)
+    # Fetch or read game data
+    if json_file:
+        games = read_game_data_from_file(json_file)
+    else:
+        games = fetch_game_data(url)
 
     # Track dates when games are played
     played_dates = {}
