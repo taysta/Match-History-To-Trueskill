@@ -86,7 +86,6 @@ url = f"{domain}/api/server/{server_id}/games/{time}"
 player_ratings = {}
 
 
-# Function to fetch game data from the API
 def fetch_game_data(in_url):
     response = requests.get(in_url)
     if response.status_code == 200:
@@ -95,7 +94,6 @@ def fetch_game_data(in_url):
         raise Exception(f"Failed to fetch data: {response.status_code}")
 
 
-# Function to get the primary ID for a user
 def get_primary_id(user_id):
     for primary_name, aliases in user_aliases.items():
         if user_id in aliases:
@@ -103,19 +101,16 @@ def get_primary_id(user_id):
     return user_id
 
 
-# Function to get the display name for a user
 def get_display_name(in_primary_id):
     return player_ratings[in_primary_id]['name']
 
 
-# Function to get all associated IDs for a primary ID
 def get_associated_ids(in_primary_id):
     if in_primary_id in user_aliases:
         return ",".join(user_aliases[in_primary_id])
     return in_primary_id
 
 
-# Function to apply sigma decay
 def apply_sigma_decay(player, inactivity_days):
     if decay_enabled and inactivity_days > grace_days:
         max_sigma_increase = default_sigma * max_decay_proportion - player['rating'].sigma
@@ -125,14 +120,14 @@ def apply_sigma_decay(player, inactivity_days):
             player['rating'] = Rating(mu=player['rating'].mu, sigma=new_sigma)
 
 
-# Function to update last played date for primary ID based on activity of all associated IDs
+# update last played date for primary ID based on activity of all associated IDs
 def update_last_played(in_primary_id, current_date):
     player = player_ratings[in_primary_id]
     if current_date > player['last_played']:
         player['last_played'] = current_date
 
 
-# Function to process a single game
+# process a single game
 def process_game(in_game, in_played_dates):
     global games_used_count
     current_date = datetime.fromtimestamp(in_game['completionTimestamp'] / 1000, timezone).date()
@@ -145,7 +140,7 @@ def process_game(in_game, in_played_dates):
 
     winning_team = in_game['winningTeam']
     if discard_ties and winning_team == 0:
-        return  # Discard the game if there's no winning team and discard_ties is True
+        return
 
     games_used_count += 1
 
@@ -219,22 +214,22 @@ def process_game(in_game, in_played_dates):
         player_ratings[user_id]['rating'] = new_team2_ratings[i]
 
 
-# Function to sort and display player ratings in a table
+# sort and display player ratings in a table
 def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_games_required, in_discard_ties, in_url,
                     in_decay_enabled, in_top_x):
     current_date = datetime.now(timezone).date()
     start_date_threshold = current_date - timedelta(days=last_days_threshold)
 
-    # Step 1: Filter out players with less than the minimum required games played
+    # Filter out players with less than the minimum required games played
     filtered_players = {user_id: data for user_id, data in player_ratings.items() if
                         data['games_played'] >= in_min_games_required}
 
-    # Step 2: Filter based on last_days_threshold
+    # Filter based on last_days_threshold
     if last_days_threshold > 0:
         filtered_players = {user_id: data for user_id, data in filtered_players.items()
                             if data['last_played'] >= start_date_threshold}
 
-    # Step 3: Filter based on min_games_last_days
+    # Filter based on min_games_last_days
     if min_games_last_days > 0:
         filtered_players = {user_id: data for user_id, data in filtered_players.items()
                             if data['recent_games'] >= min_games_last_days}
@@ -323,7 +318,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
     print(f"Ties discarded: {in_discard_ties}")
     print(f"Aliased player/s: {', '.join(user_aliases.keys())}")
 
-    # Save the table to a text file if enabled
+    # Save the text output to a text file if enabled
     if write_txt:
         with open("player_ratings.txt", "w") as text_file:
             if verbose_output:
@@ -354,7 +349,7 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
 
 
 def run():
-    # Convert the time variable to a human-readable date string
+    # Convert unix timestamps to a human-readable date string
     start_date_str = datetime.fromtimestamp(int(time) / 1000, timezone).strftime('%Y-%m-%d')
     end_date_str = datetime.now(timezone).strftime('%Y-%m-%d %I:%M %p %Z')
 
