@@ -1,6 +1,7 @@
-# External
+# Standard
 import sys
 from datetime import datetime, timedelta
+# External
 from prettytable import PrettyTable
 
 

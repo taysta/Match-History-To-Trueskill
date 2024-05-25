@@ -1,4 +1,4 @@
-# External
+# Standard
 import argparse
 # Internal
 from input import InputHandler

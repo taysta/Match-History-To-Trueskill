@@ -1,4 +1,4 @@
-# External
+# Standard
 import sys
 
 

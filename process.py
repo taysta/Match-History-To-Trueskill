@@ -1,9 +1,9 @@
-# External
+# Standard
 import requests
 import json
 from datetime import datetime, timedelta
+# External
 from trueskill import Rating, rate
-
 # Internal
 from output import display_ratings
 from shared import handle_error
