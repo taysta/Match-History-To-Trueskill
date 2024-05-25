@@ -231,12 +231,12 @@ class GameProcessor:
                                 if data.last_played >= start_date_threshold}
             self.filtered_by_last_days = initial_filtered_count - len(filtered_players)
 
-        # Filter based on min_games_last_days
-        if self.min_games_last_days > 0:
-            initial_filtered_count = len(filtered_players)
-            filtered_players = {user_id: data for user_id, data in filtered_players.items()
-                                if data.recent_games >= self.min_games_last_days}
-            self.filtered_by_min_games_last_days = initial_filtered_count - len(filtered_players)
+            # Filter based on min_games_last_days
+            if self.min_games_last_days > 0:
+                initial_filtered_count = len(filtered_players)
+                filtered_players = {user_id: data for user_id, data in filtered_players.items()
+                                    if data.recent_games >= self.min_games_last_days}
+                self.filtered_by_min_games_last_days = initial_filtered_count - len(filtered_players)
 
         # Sort players by their conservative TrueSkill rating (mu - 3 * sigma)
         sorted_players = sorted(filtered_players.items(), key=lambda x: x[1].rating.mu - 3 * x[1].rating.sigma,
@@ -318,9 +318,9 @@ class GameProcessor:
         if self.last_days_threshold > 0:
             print(f"Last days threshold: {self.last_days_threshold} ({self.filtered_by_last_days} players filtered)",
                   file=stream)
-        if self.min_games_last_days > 0:
-            print(f"Min games in last days threshold: {self.min_games_last_days} "
-                  f"({self.filtered_by_min_games_last_days} players filtered)", file=stream)
+            if self.min_games_last_days > 0:
+                print(f"Min games in last days threshold: {self.min_games_last_days} "
+                      f"({self.filtered_by_min_games_last_days} players filtered)", file=stream)
         if self.top_x > 0:
             print(f"Showing top {self.top_x} players ({cutoff_count} cutoff)", file=stream)
 
@@ -346,9 +346,9 @@ class GameProcessor:
                 if self.last_days_threshold > 0:
                     text_file.write(f"Last days threshold: {self.last_days_threshold} "
                                     f"({self.filtered_by_last_days} players filtered)\n")
-                if self.min_games_last_days > 0:
-                    text_file.write(f"Min games in last days threshold: {self.min_games_last_days} "
-                                    f"({self.filtered_by_min_games_last_days} players filtered)\n")
+                    if self.min_games_last_days > 0:
+                        text_file.write(f"Min games in last days threshold: {self.min_games_last_days} "
+                                        f"({self.filtered_by_min_games_last_days} players filtered)\n")
                 if self.top_x > 0:
                     text_file.write(f"Showing top {self.top_x} players ({cutoff_count} cutoff)\n")
                 text_file.write(f"Ties discarded: {self.discard_ties}\n")
