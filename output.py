@@ -13,7 +13,6 @@ def ensure_directory_exists(file_path):
 
 
 def display_ratings(processor, start_date_str, end_date_str, stream=sys.stdout):
-    print(f"{end_date_str}", file=stream)
     current_date = datetime.now(processor.timezone).date()
     start_date_threshold = current_date - timedelta(days=processor.last_days_threshold)
 
