@@ -204,7 +204,8 @@ class GameProcessor:
                                                                               self.default_sigma)
             previous_date = date
 
-    def display_ratings(self, start_date_str, end_date_str):
+    def display_ratings(self, start_date_str, end_date_str, stream=sys.stdout):
+        print(f"{end_date_str}")
         current_date = datetime.now(self.timezone).date()
         start_date_threshold = current_date - timedelta(days=self.last_days_threshold)
 
@@ -296,24 +297,26 @@ class GameProcessor:
 
         # Print the output to console
         if self.verbose_output:
-            print(f"Input URL: {self.url}")
-            print(f"Server ID: {self.server_id}")
+            print(f"Input URL: {self.url}", file=stream)
+            print(f"Server ID: {self.server_id}", file=stream)
 
-        print(f"Games period: From {start_date_str} to {end_date_str}")
-        print(f"Games used: {self.games_used_count}")
-        print(table)
-        print(f"Sigma decay: {decay_settings if self.decay_enabled else 'Disabled'}")
-        print(f"Minimum games required: {self.min_games_required} ({self.filtered_by_min_games} players filtered)")
+        print(f"Games period: From {start_date_str} to {end_date_str}", file=stream)
+        print(f"Games used: {self.games_used_count}", file=stream)
+        print(table, file=stream)
+        print(f"Sigma decay: {decay_settings if self.decay_enabled else 'Disabled'}", file=stream)
+        print(f"Minimum games required: {self.min_games_required} ({self.filtered_by_min_games} players filtered)",
+              file=stream)
         if self.last_days_threshold > 0:
-            print(f"Last days threshold: {self.last_days_threshold} ({self.filtered_by_last_days} players filtered)")
+            print(f"Last days threshold: {self.last_days_threshold} ({self.filtered_by_last_days} players filtered)",
+                  file=stream)
         if self.min_games_last_days > 0:
             print(f"Min games in last days threshold: {self.min_games_last_days} "
-                  f"({self.filtered_by_min_games_last_days} players filtered)")
+                  f"({self.filtered_by_min_games_last_days} players filtered)", file=stream)
         if self.top_x > 0:
-            print(f"Showing top {self.top_x} players ({cutoff_count} cutoff)")
+            print(f"Showing top {self.top_x} players ({cutoff_count} cutoff)", file=stream)
 
-        print(f"Ties discarded: {self.discard_ties}")
-        print(f"Aliased player/s: {', '.join(self.user_aliases.keys())}")
+        print(f"Ties discarded: {self.discard_ties}", file=stream)
+        print(f"Aliased player/s: {', '.join(self.user_aliases.keys())}", file=stream)
 
         # Save the text output to a text file if enabled
         if self.write_txt:
