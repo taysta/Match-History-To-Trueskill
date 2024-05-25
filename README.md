@@ -1,10 +1,25 @@
 # Turn team game match history into TrueSkill data
 
-## Running 
-1. Have python installed
-2. Get script library dependencies: `pip install prettytable python-dotenv pytz requests trueskill`
-3. Copy `.env.example` named as `.env` and fill out the required api information or alternatively the JSON filename if not using api 
-4. Run `py main.py` in a terminal to run the program, you can also pass some arguments listed at the top of `main.py` to override `.env` file settings
+## Running
+1. Ensure you have Python installed.
+2. Set up a virtual environment:
+    ```sh
+    python -m venv env
+    ```
+3. Activate the virtual environment:
+    ```sh
+    source env/bin/activate  # On Windows use `env\Scripts\activate`
+    ```
+4. Install the required dependencies: 
+    ```sh
+    pip install -r requirements.txt
+    ```
+5. Copy `.env.example` to a new file named `.env` and fill out the required API information or alternatively provide the JSON filename if not using the API.
+6. Run the program:
+    ```sh
+    python main.py
+    ```
+7. You can also pass some arguments listed in `main.py` to override `.env` file settings.
 
 ## Disclaimer
 - The output table would be constantly changing so should simply be treated as an arbitrary snapshot in time
@@ -17,8 +32,8 @@
 - This was a quick and dirty project
 
 ## Sample game (Required format)
-- Pick order, captain is irrelevant to trueskill, completionTimestamp is unused, and it should be okay to set all of these to 0 in your json file/api if you don't have that data available
-```
+- Pick order, captain is irrelevant to TrueSkill, completionTimestamp is unused, and it should be okay to set all of these to 0 in your JSON file/API if you don't have that data available
+```json
 {
 	"timestamp": 1541469560890,
 	"completionTimestamp": 1541473145720,
