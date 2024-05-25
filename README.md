@@ -7,9 +7,14 @@
     python -m venv env
     ```
 3. Activate the virtual environment:
-    ```sh
-    source env/bin/activate  # On Windows use `env\Scripts\activate`
-    ```
+   - On Unix or MacOS:
+       ```sh
+       source env/bin/activate
+       ```
+   - On Windows:
+       ```sh
+       env\Scripts\activate
+       ```
 4. Install the required dependencies: 
     ```sh
     pip install -r requirements.txt
