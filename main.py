@@ -332,7 +332,7 @@ class GameProcessor:
 
         # Save the text output to a text file if enabled
         if self.write_txt:
-            txt_filename = f"player_ratings_{timestamp}.txt"
+            txt_filename = f"out/player_ratings_{timestamp}.txt"
             with open(txt_filename, "w", encoding="utf-8") as text_file:
                 if self.verbose_output:
                     text_file.write(f"Input URL: {self.url}\n")
@@ -356,7 +356,7 @@ class GameProcessor:
 
         # Save the table to a CSV file if enabled
         if self.write_csv:
-            csv_filename = f"player_ratings_{timestamp}.csv"
+            csv_filename = f"out/player_ratings_{timestamp}.csv"
             with open(csv_filename, "w", encoding="utf-8") as csv_file:
                 if self.verbose_output:
                     csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
