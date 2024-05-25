@@ -327,9 +327,13 @@ class GameProcessor:
         print(f"Ties discarded: {self.discard_ties}", file=stream)
         print(f"Aliased player/s: {', '.join(self.user_aliases.keys())}", file=stream)
 
+        # Get current timestamp for unique filenames
+        timestamp = datetime.now(self.timezone).strftime('%Y%m%d_%H%M%S')
+
         # Save the text output to a text file if enabled
         if self.write_txt:
-            with open("player_ratings.txt", "w", encoding="utf-8") as text_file:
+            txt_filename = f"player_ratings_{timestamp}.txt"
+            with open(txt_filename, "w", encoding="utf-8") as text_file:
                 if self.verbose_output:
                     text_file.write(f"Input URL: {self.url}\n")
                     text_file.write(f"Server ID: {self.server_id}\n")
@@ -352,7 +356,8 @@ class GameProcessor:
 
         # Save the table to a CSV file if enabled
         if self.write_csv:
-            with open("player_ratings.csv", "w", encoding="utf-8") as csv_file:
+            csv_filename = f"player_ratings_{timestamp}.csv"
+            with open(csv_filename, "w", encoding="utf-8") as csv_file:
                 if self.verbose_output:
                     csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
                                    "Win/Loss,Last Played,Avg Pick Order,Discord ID/s\n")

@@ -2,3 +2,4 @@
 .idea
 pyvenv.cfg
 env/
+player_ratings_*
