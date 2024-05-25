@@ -175,21 +175,17 @@ class GameProcessor:
     def update_ratings(self, team1, team1_ids, team2, team2_ids, winning_team):
         if winning_team == 1:
             new_team1_ratings, new_team2_ratings = rate([team1, team2])
-            self.update_team_stats(team1_ids, new_team1_ratings, True)
-            self.update_team_stats(team2_ids, new_team2_ratings, False)
+            self.update_team_stats(team1_ids, new_team1_ratings)
+            self.update_team_stats(team2_ids, new_team2_ratings)
         else:
             new_team2_ratings, new_team1_ratings = rate([team2, team1])
-            self.update_team_stats(team2_ids, new_team2_ratings, True)
-            self.update_team_stats(team1_ids, new_team1_ratings, False)
+            self.update_team_stats(team2_ids, new_team2_ratings)
+            self.update_team_stats(team1_ids, new_team1_ratings)
 
-    def update_team_stats(self, team_ids, new_ratings, is_win):
+    def update_team_stats(self, team_ids, new_ratings):
         for i, user_id in enumerate(team_ids):
             player = self.player_ratings[user_id]
             player.rating = new_ratings[i]
-            if is_win:
-                player.wins += 1
-            else:
-                player.losses += 1
 
     def apply_decay(self, played_dates):
         previous_date = None
