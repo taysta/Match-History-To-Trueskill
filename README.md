@@ -24,7 +24,7 @@
     ```sh
     python main.py
     ```
-7. You can also pass some arguments listed in `main.py` to override `.env` file settings.
+7. You can also pass some arguments listed by `python main.py --help`
 
 ## Disclaimer
 - The output table would be constantly changing so should simply be treated as an arbitrary snapshot in time
