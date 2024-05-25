@@ -147,15 +147,19 @@ class GameProcessor:
             team1_ids = []
             team2_ids = []
 
+            now_date = datetime.now(self.timezone).date()
+            threshold_date = now_date - timedelta(days=self.last_days_threshold)
+
             for player_data in game['players']:
                 user_id = str(player_data['user']['id'])
                 user_name = player_data['user']['name']
                 player = self.get_player(user_id, user_name)
                 pick_order = player_data['pickOrder'] if player_data['pickOrder'] is not None else 0
 
-                player.add_game(winning_team == player_data['team'], current_date,
-                                current_date >= datetime.now(self.timezone).date() -
-                                timedelta(days=self.last_days_threshold))
+                is_win = winning_team == player_data['team']
+                is_recent_game = current_date >= threshold_date
+
+                player.add_game(is_win, current_date, is_recent_game)
 
                 # Only count pick order if the player is not the captain
                 if player_data['captain'] == 0:
