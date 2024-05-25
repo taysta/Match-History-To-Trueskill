@@ -137,7 +137,8 @@ class TestGameProcessor(unittest.TestCase):
 
         self.assertTrue(any(f"Games period: From 2021-01-01 to {end_date_str}" in str(call) for call in output))
         self.assertTrue(any("Games used: 0" in str(call) for call in output))
-        self.assertTrue(any("Sigma decay: decay_amount=0.1, grace_days=7, max_decay_proportion=0.5" in str(call) for call in output))
+        self.assertTrue(any("Sigma decay: decay_amount=0.1, grace_days=7, max_decay_proportion=0.5"
+                            in str(call) for call in output))
         self.assertTrue(any("Minimum games required: 10 (0 players filtered)" in str(call) for call in output))
         self.assertTrue(any("Ties discarded: False" in str(call) for call in output))
         self.assertTrue(any("Aliased player/s: " in str(call) for call in output))
