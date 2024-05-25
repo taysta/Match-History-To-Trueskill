@@ -9,6 +9,7 @@ from shared import handle_error
 # Main execution
 def main():
     parser = argparse.ArgumentParser(description='Process team game match history into TrueSkill data.')
+    parser.add_argument('--settings', type=str, default='settings.json', help='Path to settings JSON file')
     parser.add_argument('--domain', type=str, help='API domain')
     parser.add_argument('--server_id', type=str, help='Server ID')
     parser.add_argument('--date_start', type=str, help='Start date in timestamp')

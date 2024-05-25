@@ -7,10 +7,10 @@
       - On Unix or macOS:  `source env/bin/activate`
       - On Windows: `env\Scripts\activate`
 3. Install the required dependencies: `pip install -r requirements.txt`
-4. Copy `.env.example` to a new file named `.env` and fill out the required API information or alternatively provide the JSON filename if not using the API.
+4. Copy or rename `config.ini.example` to a new file named `config.ini` and fill out the required API information or alternatively provide the JSON filename if not using the API.
 5. Run the program: `python main.py`
 6. You can also pass arguments listed with `python main.py --help`
-
+7. Developers can run the test harness with `python -m unittest test.py`
 ## Disclaimer
 - The output table would be constantly changing so should simply be treated as an arbitrary snapshot in time.
 - There is no consideration of individual performance in that match, only win/loss.

@@ -1,5 +1,12 @@
-.env
-.idea
-pyvenv.cfg
+# pyenv/venv files
 env/
-player_ratings_*
+pyvenv.cfg
+
+# Files produced by program
+out/
+
+# Config file
+/config.ini
+
+# PyCharm files
+.idea

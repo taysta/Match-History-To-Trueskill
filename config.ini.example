@@ -1,0 +1,63 @@
+[MANDATORY]
+# Domain URL for the REST API server
+DOMAIN = http://
+# Discord Server ID
+SERVER_ID =
+# Unix/Epoch time in ms to set the beginning cut off date of dataset (13-digit timestamp)
+DATE_START =
+
+[ALTERNATIVE]
+# Alternatively JSON file to load data from instead of the REST API
+JSON_FILENAME =
+
+[SETTINGS]
+# Timezone used when displaying times
+TIMEZONE = Australia/Sydney
+# Write output to txt file (True/False)
+WRITE_TXT = False
+# Write table to csv file (True/False)
+WRITE_CSV = False
+
+[PLAYER_FILTERING]
+# Games required to appear on the tables
+MINIMUM_GAMES_REQUIRED = 0
+# Maximum number of days since player's last match
+LAST_DAYS_THRESHOLD = 0
+# Minimum number of games required to be played in the LAST_DAYS_THRESHOLD days
+MINIMUM_GAMES_LAST_DAYS = 0
+# Only show the top X players (0 to show all)
+TOP_X_CUTOFF = 0
+
+[MATCH_FILTERING]
+# Discard ties (True/False)
+DISCARD_TIES = True
+
+[ALIAS_MAPPINGS]
+# Alias mappings for players
+# Format as a JSON object where each key is a string representing the primary name for the player,
+# and each value is a list of strings representing the IDs that should be considered aliases for that player.
+# Example:
+# ALIASED_PLAYERS = {
+#     "bro/dudebro": ["511324940432034371", "052835155322766639"],
+#     "dude/dudeman": ["687369399189329302", "361150017093239962"] }
+ALIASED_PLAYERS = {}
+
+[OUTPUT]
+# Disables Server/User ID's and URL from output when false
+VERBOSE_OUTPUT = False
+
+[TRUESKILL]
+# Default/initial mu value
+TS_DEFAULT_MU = 25
+# Default/initial sigma
+TS_DEFAULT_SIGMA = 8.333
+
+[SIGMA_DECAY]
+# Enable rating decay over periods of inactivity (only affects sigma/uncertainty) (True/False)
+DECAY_ENABLED = True
+# Default amount to decay by each day
+DECAY_AMOUNT = 0.022831050228310504
+# Number of grace days after last time player participated until decay begins
+DECAY_GRACE_DAYS = 0
+# Maximum amount a player can decay in a single period of inactivity
+MAX_DECAY_PROPORTION = 0.5
