@@ -1,4 +1,4 @@
-# Turn team game match history into TrueSkill data
+#  Calculate Trueskill data from team-game match histories
 
 ## Running
 1. Ensure you have Python installed.
