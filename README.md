@@ -1,40 +1,25 @@
-#  Calculate Trueskill data from team-game match histories
+#  Calculate Trueskill Data from Match History
 
 ## Running
 1. Ensure you have Python installed.
-2. Set up a virtual environment:
-    ```sh
-    python -m venv env
-    ```
-3. Activate the virtual environment:
-   - On Unix or MacOS:
-       ```sh
-       source env/bin/activate
-       ```
-   - On Windows:
-       ```sh
-       env\Scripts\activate
-       ```
-4. Install the required dependencies: 
-    ```sh
-    pip install -r requirements.txt
-    ```
-5. Copy `.env.example` to a new file named `.env` and fill out the required API information or alternatively provide the JSON filename if not using the API.
-6. Run the program:
-    ```sh
-    python main.py
-    ```
-7. You can also pass some arguments listed by `python main.py --help`
+2. Set up a virtual environment: `python -m venv env`
+   - Activate the virtual environment:
+      - On Unix or macOS:  `source env/bin/activate`
+      - On Windows: `env\Scripts\activate`
+3. Install the required dependencies: `pip install -r requirements.txt`
+4. Copy `.env.example` to a new file named `.env` and fill out the required API information or alternatively provide the JSON filename if not using the API.
+5. Run the program: `python main.py`
+6. You can also pass arguments listed with `python main.py --help`
 
 ## Disclaimer
-- The output table would be constantly changing so should simply be treated as an arbitrary snapshot in time
-- There is no consideration of individual performance in that match, only win/loss
-- There is no consideration of what positions were played, how good players are at that position, etc
-- If there is a large disparity of player skill it can often mean unbalanced matches
-- If there is a small time period of recorded games and/or a small sample size of games the results can be less reliable
-- Pick order is not currently factored into the rating, and we don't know what advantage/disadvantage being under/over/accurately picked gives
-- I'm not a professional coder or statistician, so I may have messed up at some points, if you think that's the case feel free to create a pull request or issue
-- This was a quick and dirty project
+- The output table would be constantly changing so should simply be treated as an arbitrary snapshot in time.
+- There is no consideration of individual performance in that match, only win/loss.
+- There is no consideration of what positions were played, how good players are at that position, etc.
+- If there is a large disparity of player skill it can often mean unbalanced matches.
+- If there is a small time-period of recorded games and/or a small sample size of games the results can be less reliable.
+- Pick order is not currently factored into the rating, and we don't know what advantage/disadvantage being under/over/accurately picked gives.
+- I'm not a professional coder or statistician, so I may have messed up at some points, if you think that's the case feel free to create a pull request or issue.
+- This was a quick and dirty project.
 
 ## Sample game (Required format)
 - Pick order, captain is irrelevant to TrueSkill, completionTimestamp is unused, and it should be okay to set all of these to 0 in your JSON file/API if you don't have that data available
