@@ -1,8 +1,15 @@
 # Standard
+import os
 import sys
 from datetime import datetime, timedelta
 # External
 from prettytable import PrettyTable
+
+
+def ensure_directory_exists(file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 
 def display_ratings(processor, start_date_str, end_date_str, stream=sys.stdout):
@@ -126,6 +133,7 @@ def display_ratings(processor, start_date_str, end_date_str, stream=sys.stdout):
     # Save the text output to a text file if enabled
     if processor.write_txt:
         txt_filename = f"out/player_ratings_{timestamp}.txt"
+        ensure_directory_exists(txt_filename)
         with open(txt_filename, "w", encoding="utf-8") as text_file:
             if processor.verbose_output:
                 text_file.write(f"Input URL: {processor.url}\n")
@@ -150,6 +158,7 @@ def display_ratings(processor, start_date_str, end_date_str, stream=sys.stdout):
     # Save the table to a CSV file if enabled
     if processor.write_csv:
         csv_filename = f"out/player_ratings_{timestamp}.csv"
+        ensure_directory_exists(csv_filename)
         with open(csv_filename, "w", encoding="utf-8") as csv_file:
             if processor.verbose_output:
                 csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"

@@ -1,6 +1,7 @@
 # Standard
 import json
 import os
+from datetime import datetime
 # External
 import pytz
 from dotenv import load_dotenv  # (use python-dotenv)
@@ -33,7 +34,6 @@ class InputHandler:
         self.json_file = None
 
     def set_handler(self):
-
         try:
             load_dotenv()
         except Exception as load_dotenv_exception:
@@ -65,6 +65,47 @@ class InputHandler:
         self.write_txt = self.args.write_txt or os.getenv("WRITE_TXT") == 'True'
         self.write_csv = self.args.write_csv or os.getenv("WRITE_CSV") == 'True'
         self.json_file = self.args.json_file or os.getenv("JSON_FILENAME")
+
+        self.validate_inputs()
+
+    def validate_inputs(self):
+        if not self.domain:
+            handle_error(ValueError("DOMAIN not specified"), "Domain must be provided.")
+        if not self.server_id:
+            handle_error(ValueError("SERVER_ID not specified"), "Server ID must be provided.")
+        if not self.start_date.isdigit() or len(self.start_date) != 13:
+            handle_error(ValueError("DATE_START format error"), "Start date must be a 13-digit timestamp.")
+        try:
+            datetime.fromtimestamp(int(self.start_date) / 1000, self.timezone)
+        except Exception as e:
+            handle_error(e, "Invalid DATE_START timestamp.")
+        if self.min_games_required < 0:
+            handle_error(ValueError("MINIMUM_GAMES_REQUIRED must be non-negative"),
+                         "Minimum games required must be non-negative.")
+        if self.last_days_threshold < 0:
+            handle_error(ValueError("LAST_DAYS_THRESHOLD must be non-negative"),
+                         "Last days threshold must be non-negative.")
+        if self.min_games_last_days < 0:
+            handle_error(ValueError("MINIMUM_GAMES_LAST_DAYS must be non-negative"),
+                         "Minimum games in last days must be non-negative.")
+        if self.top_x < 0:
+            handle_error(ValueError("TOP_X_CUTOFF must be non-negative"),
+                         "Top X players cutoff must be non-negative.")
+        if self.decay_amount < 0:
+            handle_error(ValueError("DECAY_AMOUNT must be non-negative"),
+                         "Decay amount must be non-negative.")
+        if self.grace_days < 0:
+            handle_error(ValueError("DECAY_GRACE_DAYS must be non-negative"),
+                         "Grace days must be non-negative.")
+        if not 0 <= self.max_decay_proportion <= 1:
+            handle_error(ValueError("MAX_DECAY_PROPORTION must be between 0 and 1"),
+                         "Max decay proportion must be between 0 and 1.")
+        if self.default_sigma <= 0:
+            handle_error(ValueError("TS_DEFAULT_SIGMA must be positive"),
+                         "Default sigma for TrueSkill must be positive.")
+        if self.default_mu <= 0:
+            handle_error(ValueError("TS_DEFAULT_MU must be positive"),
+                         "Default mu for TrueSkill must be positive.")
 
     def get_settings(self):
         return {
