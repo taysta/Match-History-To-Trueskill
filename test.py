@@ -1,8 +1,11 @@
+# External
+import pytz
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
 from datetime import datetime, timedelta
-import pytz
-from main import Player, GameProcessor
+# Internal
+from process import Player, GameProcessor
+from output import display_ratings
 
 
 class TestPlayer(unittest.TestCase):
@@ -49,12 +52,13 @@ class TestGameProcessor(unittest.TestCase):
         self.write_txt = False
         self.write_csv = False
         self.json_file = None
+        self.user_aliases = {"main": ["alias1", "alias2"]}
 
         self.processor = GameProcessor(
             self.domain, self.server_id, self.start_date, self.timezone, self.min_games_required,
             self.last_days_threshold, self.min_games_last_days, self.discard_ties, self.decay_enabled,
             self.decay_amount, self.grace_days, self.max_decay_proportion, self.default_sigma, self.default_mu,
-            self.verbose_output, self.top_x, self.write_txt, self.write_csv, self.json_file
+            self.verbose_output, self.top_x, self.write_txt, self.write_csv, self.json_file, self.user_aliases
         )
 
     @patch('requests.get')
@@ -72,9 +76,9 @@ class TestGameProcessor(unittest.TestCase):
         self.processor.json_file = "dummy_path"
         data = self.processor.read_game_data_from_file()
         self.assertEqual(data, {"key": "value"})
+        mock_file.assert_called_once_with("dummy_path", 'r')
 
     def test_get_primary_id(self):
-        self.processor.user_aliases = {"main": ["alias1", "alias2"]}
         self.assertEqual(self.processor.get_primary_id("alias1"), "main")
         self.assertEqual(self.processor.get_primary_id("unknown"), "unknown")
 
@@ -130,7 +134,7 @@ class TestGameProcessor(unittest.TestCase):
         end_date_str = datetime.now(self.timezone).strftime('%Y-%m-%d %I:%M %p %Z')
 
         # Call the actual display_ratings method
-        self.processor.display_ratings("2021-01-01", end_date_str, mock_stdout)
+        display_ratings(self.processor, "2021-01-01", end_date_str, mock_stdout)
 
         # Check the calls to the write method
         output = mock_stdout.write.call_args_list
