@@ -16,293 +16,223 @@ def handle_error(exception, msg):
     sys.exit(1)
 
 
-# Command-line arguments parsing
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('--domain', type=str, help='API domain')
-parser.add_argument('--server_id', type=str, help='Server ID')
-parser.add_argument('--date_start', type=str, help='Start date in timestamp')
-parser.add_argument('--timezone', type=str, help='Timezone')
-parser.add_argument('--min_games', type=int, help='Minimum games required')
-parser.add_argument('--last_days_threshold', type=int, help='Last days threshold')
-parser.add_argument('--min_games_last_days', type=int, help='Minimum games in last days')
-parser.add_argument('--discard_ties', action='store_true', help='Discard ties')
-parser.add_argument('--decay_enabled', action='store_true', help='Enable sigma decay')
-parser.add_argument('--decay_amount', type=float, help='Decay amount')
-parser.add_argument('--grace_days', type=int, help='Grace days for decay')
-parser.add_argument('--max_decay_proportion', type=float, help='Max decay proportion')
-parser.add_argument('--ts_default_sigma', type=float, help='Default sigma for TrueSkill')
-parser.add_argument('--ts_default_mu', type=float, help='Default mu for TrueSkill')
-parser.add_argument('--verbose_output', action='store_true', help='Enable verbose output')
-parser.add_argument('--top_x', type=int, default=0, help='Show top X players (0 for all)')
-parser.add_argument('--write_txt', action='store_true', help='Write output to text file')
-parser.add_argument('--write_csv', action='store_true', help='Write output to CSV file')
-parser.add_argument('--json_file', type=str, help='Path to JSON file containing game data')
+class Player:
+    def __init__(self, user_id, user_name, default_mu, default_sigma):
+        self.user_id = user_id
+        self.name = user_name
+        self.rating = Rating(mu=default_mu, sigma=default_sigma)
+        self.games_played = 0
+        self.wins = 0
+        self.losses = 0
+        self.last_played = None
+        self.secondary_ids = set()
+        self.total_pick_order = 0
+        self.pick_order_count = 0
+        self.avg_pick_order = 0.0
+        self.recent_games = 0
 
-try:
-    args = parser.parse_args()
-except Exception as parse_args_exception:
-    handle_error(parse_args_exception, "Failed to parse command-line arguments")
-    args = None  # Ensure args is defined even if parsing fails
+    def update_pick_order(self, pick_order):
+        self.total_pick_order += pick_order
+        self.pick_order_count += 1
+        self.avg_pick_order = self.total_pick_order / self.pick_order_count
 
-# Load environment variables from .env file
-try:
-    load_dotenv()
-except Exception as load_dotenv_exception:
-    handle_error(load_dotenv_exception, "Failed to load environment variables from .env file")
+    def add_game(self, is_win, current_date, is_recent_game):
+        self.games_played += 1
+        if is_win:
+            self.wins += 1
+        else:
+            self.losses += 1
+        if self.last_played is None or current_date > self.last_played:
+            self.last_played = current_date
+        if is_recent_game:
+            self.recent_games += 1
 
-try:
-    # Inputs (override with command-line arguments if provided)
-    domain = args.domain or os.getenv("DOMAIN")
-    server_id = args.server_id or os.getenv("SERVER_ID")
-    time = args.date_start or os.getenv("DATE_START")
-
-    # Timezone
-    timezone_in = args.timezone or os.getenv("TIMEZONE")
-    timezone = pytz.timezone(timezone_in)
-
-    # Alias mappings
-    user_aliases = json.loads(os.getenv("ALIASED_PLAYERS"))
-
-    # Playtime filtering
-    min_games_required = args.min_games or int(os.getenv("MINIMUM_GAMES_REQUIRED"))
-
-    # Activity filtering
-    last_days_threshold = args.last_days_threshold or int(os.getenv("LAST_DAYS_THRESHOLD"))
-    min_games_last_days = args.min_games_last_days or int(os.getenv("MINIMUM_GAMES_LAST_DAYS"))
-
-    # Top X players filtering
-    top_x = args.top_x or int(os.getenv("TOP_X_CUTOFF"))
-
-    # Discard ties
-    discard_ties = args.discard_ties or os.getenv("DISCARD_TIES") == 'True'
-
-    # Sigma decay
-    decay_enabled = args.decay_enabled or os.getenv("DECAY_ENABLED") == 'True'
-    decay_amount = args.decay_amount or float(os.getenv("DECAY_AMOUNT"))
-    grace_days = args.grace_days or int(os.getenv("DECAY_GRACE_DAYS"))
-    max_decay_proportion = args.max_decay_proportion or float(os.getenv("MAX_DECAY_PROPORTION"))
-
-    # Trueskill
-    default_sigma = args.ts_default_sigma or float(os.getenv("TS_DEFAULT_SIGMA"))
-    default_mu = args.ts_default_mu or float(os.getenv("TS_DEFAULT_MU"))
-
-    # Verbosity
-    verbose_output = args.verbose_output or os.getenv("VERBOSE_OUTPUT") == 'True'
-
-    # File writing settings
-    write_txt = args.write_txt or os.getenv("WRITE_TXT") == 'True'
-    write_csv = args.write_csv or os.getenv("WRITE_CSV") == 'True'
-
-    # JSON file path
-    json_file = args.json_file or os.getenv("JSON_FILENAME")
-
-    # Counter for games used
-    games_used_count = 0
-
-    # Construct the URL from the input variables
-    url = f"{domain}/api/server/{server_id}/games/{time}"
-
-    # Initialize a dictionary to store player ratings and games played
-    player_ratings = {}
-except Exception as init_variables_exception:
-    handle_error(init_variables_exception, "Failed to initialize input variables")
+    def apply_sigma_decay(self, decay_amount, max_decay_proportion, inactivity_days, default_sigma):
+        max_sigma_increase = default_sigma * max_decay_proportion - self.rating.sigma
+        if max_sigma_increase > 0:
+            total_decay = min(decay_amount * inactivity_days, max_sigma_increase)
+            new_sigma = self.rating.sigma + total_decay
+            self.rating = Rating(mu=self.rating.mu, sigma=new_sigma)
 
 
-# Function to fetch game data from the API
-def fetch_game_data(in_url):
-    try:
-        response = requests.get(in_url)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as fetch_game_data_exception:
-        handle_error(fetch_game_data_exception, f"Failed to fetch data from {in_url}")
+class GameProcessor:
+    def __init__(self, domain, server_id, start_date, timezone, min_games_required, last_days_threshold,
+                 min_games_last_days, discard_ties, decay_enabled, decay_amount, grace_days,
+                 max_decay_proportion, default_sigma, default_mu, verbose_output, top_x, write_txt, write_csv,
+                 json_file):
+        self.domain = domain
+        self.server_id = server_id
+        self.start_date = start_date
+        self.timezone = timezone
+        self.min_games_required = min_games_required
+        self.last_days_threshold = last_days_threshold
+        self.min_games_last_days = min_games_last_days
+        self.discard_ties = discard_ties
+        self.decay_enabled = decay_enabled
+        self.decay_amount = decay_amount
+        self.grace_days = grace_days
+        self.max_decay_proportion = max_decay_proportion
+        self.default_sigma = default_sigma
+        self.default_mu = default_mu
+        self.verbose_output = verbose_output
+        self.top_x = top_x
+        self.write_txt = write_txt
+        self.write_csv = write_csv
+        self.json_file = json_file
+        self.url = f"{self.domain}/api/server/{self.server_id}/games/{self.start_date}"
+        self.player_ratings = {}
+        self.games_used_count = 0
+        self.user_aliases = {}
 
+    def fetch_game_data(self):
+        try:
+            response = requests.get(self.url)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            handle_error(e, f"Failed to fetch data from {self.url}")
 
-def read_game_data_from_file(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            return json.load(file)
-    except Exception as read_game_data_exception:
-        handle_error(read_game_data_exception, f"Failed to read game data from file {file_path}")
+    def read_game_data_from_file(self):
+        try:
+            with open(self.json_file, 'r') as file:
+                return json.load(file)
+        except Exception as e:
+            handle_error(e, f"Failed to read game data from file {self.json_file}")
 
-
-def get_primary_id(user_id):
-    try:
-        for primary_name, aliases in user_aliases.items():
+    def get_primary_id(self, user_id):
+        for primary_name, aliases in self.user_aliases.items():
             if user_id in aliases:
                 return primary_name
         return user_id
-    except Exception as get_primary_id_exception:
-        handle_error(get_primary_id_exception, f"Failed to get primary ID for user ID {user_id}")
 
+    def get_player(self, user_id, user_name):
+        primary_id = self.get_primary_id(user_id)
+        if primary_id not in self.player_ratings:
+            self.player_ratings[primary_id] = Player(primary_id, user_name, self.default_mu, self.default_sigma)
+        return self.player_ratings[primary_id]
 
-def get_display_name(in_primary_id):
-    try:
-        return player_ratings[in_primary_id]['name']
-    except KeyError:
-        handle_error(KeyError, f"Primary ID {in_primary_id} not found in player ratings")
+    def process_game(self, game, played_dates):
+        current_date = None
+        try:
+            current_date = datetime.fromtimestamp(game['completionTimestamp'] / 1000, self.timezone).date()
+        except Exception as e:
+            handle_error(e, f"Failed to convert timestamp for game {game}")
 
+        # Track the dates on which games were played
+        if current_date not in played_dates:
+            played_dates[current_date] = set()
+        try:
+            for player in game['players']:
+                played_dates[current_date].add(player['user']['id'])
+        except KeyError:
+            handle_error(KeyError, f"Player ID not found in game data {game}")
 
-def get_associated_ids(in_primary_id):
-    try:
-        if in_primary_id in user_aliases:
-            return ",".join(user_aliases[in_primary_id])
-        return in_primary_id
-    except Exception as get_associated_ids_exception:
-        handle_error(get_associated_ids_exception, f"Failed to get associated IDs for primary ID {in_primary_id}")
+        try:
+            winning_team = game['winningTeam']
+            if self.discard_ties and winning_team == 0:
+                return
 
+            self.games_used_count += 1
 
-def apply_sigma_decay(player, inactivity_days):
-    try:
-        if decay_enabled and inactivity_days > grace_days:
-            max_sigma_increase = default_sigma * max_decay_proportion - player['rating'].sigma
-            if max_sigma_increase > 0:
-                total_decay = min(decay_amount * inactivity_days, max_sigma_increase)
-                new_sigma = player['rating'].sigma + total_decay
-                player['rating'] = Rating(mu=player['rating'].mu, sigma=new_sigma)
-    except Exception as apply_sigma_decay_exception:
-        handle_error(apply_sigma_decay_exception, "Failed to apply sigma decay for player")
+            team1 = []
+            team2 = []
+            team1_ids = []
+            team2_ids = []
 
+            for player_data in game['players']:
+                user_id = str(player_data['user']['id'])
+                user_name = player_data['user']['name']
+                player = self.get_player(user_id, user_name)
+                pick_order = player_data['pickOrder'] if player_data['pickOrder'] is not None else 0
 
-def update_last_played(in_primary_id, current_date):
-    try:
-        player = player_ratings[in_primary_id]
-        if current_date > player['last_played']:
-            player['last_played'] = current_date
-    except KeyError:
-        handle_error(KeyError, f"Primary ID {in_primary_id} not found in player ratings")
+                player.add_game(winning_team == player_data['team'], current_date,
+                                current_date >= datetime.now(self.timezone).date() -
+                                timedelta(days=self.last_days_threshold))
 
+                # Only count pick order if the player is not the captain
+                if player_data['captain'] == 0:
+                    player.update_pick_order(pick_order)
 
-def process_game(in_game, in_played_dates):
-    global games_used_count
-    current_date = None
-    try:
-        current_date = datetime.fromtimestamp(in_game['completionTimestamp'] / 1000, timezone).date()
-    except Exception as process_game_exception:
-        handle_error(process_game_exception, f"Failed to convert timestamp for game {in_game}")
+                player.secondary_ids.add(user_id)
 
-    # Track the dates on which games were played
-    if current_date not in in_played_dates:
-        in_played_dates[current_date] = set()
-    try:
-        for player in in_game['players']:
-            in_played_dates[current_date].add(player['user']['id'])
-    except KeyError:
-        handle_error(KeyError, f"Player ID not found in game data {in_game}")
+                if player_data['team'] == 1:
+                    team1.append(player.rating)
+                    team1_ids.append(player.user_id)
+                else:
+                    team2.append(player.rating)
+                    team2_ids.append(player.user_id)
 
-    try:
-        winning_team = in_game['winningTeam']
-        if discard_ties and winning_team == 0:
-            return
+            # Update ratings based on match result
+            self.update_ratings(team1, team1_ids, team2, team2_ids, winning_team)
+        except KeyError as e:
+            handle_error(e, f"Failed to process game {game}")
 
-        games_used_count += 1
-
-        team1 = []
-        team2 = []
-        team1_ids = []
-        team2_ids = []
-
-        for player in in_game['players']:
-            user_id = str(player['user']['id'])
-            user_name = player['user']['name']
-            in_primary_id = get_primary_id(user_id)
-            pick_order = player['pickOrder'] if player['pickOrder'] is not None else 0
-
-            if in_primary_id not in player_ratings:
-                player_ratings[in_primary_id] = {
-                    'name': user_name,
-                    'rating': Rating(mu=default_mu, sigma=default_sigma),
-                    'games_played': 0,
-                    'wins': 0,
-                    'losses': 0,
-                    'last_played': current_date,
-                    'secondary_ids': set(),
-                    'total_pick_order': 0,
-                    'pick_order_count': 0,
-                    'avg_pick_order': 0.0,
-                    'recent_games': 0
-                }
-
-            player_ratings[in_primary_id]['games_played'] += 1
-
-            # Track recent games
-            if current_date >= datetime.now(timezone).date() - timedelta(days=last_days_threshold):
-                player_ratings[in_primary_id]['recent_games'] += 1
-
-            # Only count pick order if the player is not the captain
-            if player['captain'] == 0:
-                player_ratings[in_primary_id]['total_pick_order'] += pick_order
-                player_ratings[in_primary_id]['pick_order_count'] += 1
-                player_ratings[in_primary_id]['avg_pick_order'] = (player_ratings[in_primary_id]['total_pick_order'] /
-                                                                   player_ratings[in_primary_id]['pick_order_count'])
-
-            player_ratings[in_primary_id]['secondary_ids'].add(user_id)
-            update_last_played(in_primary_id, current_date)
-
-            if player['team'] == 1:
-                team1.append(player_ratings[in_primary_id]['rating'])
-                team1_ids.append(in_primary_id)
-            else:
-                team2.append(player_ratings[in_primary_id]['rating'])
-                team2_ids.append(in_primary_id)
-
-        # Update ratings based on match result
+    def update_ratings(self, team1, team1_ids, team2, team2_ids, winning_team):
         if winning_team == 1:
             new_team1_ratings, new_team2_ratings = rate([team1, team2])
-            for user_id in team1_ids:
-                player_ratings[user_id]['wins'] += 1
-            for user_id in team2_ids:
-                player_ratings[user_id]['losses'] += 1
+            self.update_team_stats(team1_ids, new_team1_ratings, True)
+            self.update_team_stats(team2_ids, new_team2_ratings, False)
         else:
             new_team2_ratings, new_team1_ratings = rate([team2, team1])
-            for user_id in team2_ids:
-                player_ratings[user_id]['wins'] += 1
-            for user_id in team1_ids:
-                player_ratings[user_id]['losses'] += 1
+            self.update_team_stats(team2_ids, new_team2_ratings, True)
+            self.update_team_stats(team1_ids, new_team1_ratings, False)
 
-        # Save updated ratings back to the dictionary
-        for i, user_id in enumerate(team1_ids):
-            player_ratings[user_id]['rating'] = new_team1_ratings[i]
-        for i, user_id in enumerate(team2_ids):
-            player_ratings[user_id]['rating'] = new_team2_ratings[i]
-    except KeyError as process_game_key_error:
-        handle_error(process_game_key_error, f"Failed to process game {in_game}")
+    def update_team_stats(self, team_ids, new_ratings, is_win):
+        for i, user_id in enumerate(team_ids):
+            player = self.player_ratings[user_id]
+            player.rating = new_ratings[i]
+            if is_win:
+                player.wins += 1
+            else:
+                player.losses += 1
 
+    def apply_decay(self, played_dates):
+        previous_date = None
+        for date in sorted(played_dates.keys()):
+            participants = played_dates[date]
+            if previous_date:
+                for player_id in self.player_ratings:
+                    primary_id = self.get_primary_id(player_id)
+                    if primary_id not in participants:
+                        days_inactive = (date - self.player_ratings[primary_id].last_played).days
+                        if days_inactive > self.grace_days:
+                            self.player_ratings[primary_id].apply_sigma_decay(self.decay_amount,
+                                                                              self.max_decay_proportion, days_inactive,
+                                                                              self.default_sigma)
+            previous_date = date
 
-def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_games_required, in_discard_ties, in_url,
-                    in_decay_enabled, in_top_x):
-    try:
-        current_date = datetime.now(timezone).date()
-        start_date_threshold = current_date - timedelta(days=last_days_threshold)
+    def display_ratings(self, start_date_str, end_date_str):
+        current_date = datetime.now(self.timezone).date()
+        start_date_threshold = current_date - timedelta(days=self.last_days_threshold)
 
         # Filter out players with less than the minimum required games played
-        filtered_players = {user_id: data for user_id, data in player_ratings.items() if
-                            data['games_played'] >= in_min_games_required}
+        filtered_players = {user_id: data for user_id, data in self.player_ratings.items() if
+                            data.games_played >= self.min_games_required}
 
         # Filter based on last_days_threshold
-        if last_days_threshold > 0:
+        if self.last_days_threshold > 0:
             filtered_players = {user_id: data for user_id, data in filtered_players.items()
-                                if data['last_played'] >= start_date_threshold}
+                                if data.last_played >= start_date_threshold}
 
         # Filter based on min_games_last_days
-        if min_games_last_days > 0:
+        if self.min_games_last_days > 0:
             filtered_players = {user_id: data for user_id, data in filtered_players.items()
-                                if data['recent_games'] >= min_games_last_days}
+                                if data.recent_games >= self.min_games_last_days}
 
         # Sort players by their conservative TrueSkill rating (mu - 3 * sigma)
-        sorted_players = sorted(filtered_players.items(), key=lambda x: x[1]['rating'].mu - 3 * x[1]['rating'].sigma,
+        sorted_players = sorted(filtered_players.items(), key=lambda x: x[1].rating.mu - 3 * x[1].rating.sigma,
                                 reverse=True)
 
         # Calculate the number of players below the cutoff
-        cutoff_count = max(0, len(sorted_players) - in_top_x) if in_top_x > 0 else 0
+        cutoff_count = max(0, len(sorted_players) - self.top_x) if self.top_x > 0 else 0
 
-        # Limit the number of players to display if in_top_x is greater than 0
-        if in_top_x > 0:
-            sorted_players = sorted_players[:in_top_x]
+        # Limit the number of players to display if self.top_x is greater than 0
+        if self.top_x > 0:
+            sorted_players = sorted_players[:self.top_x]
 
         table = PrettyTable()
 
-        if verbose_output:
+        if self.verbose_output:
             table.field_names = ["Rank", "Name", "Trueskill Rating (μ - 3*σ)", "μ (mu)", "σ (sigma)", "Games Played",
                                  "Win/Loss", "Last Played", "Avg Pick Order", "Discord ID/s"]
         else:
@@ -311,18 +241,17 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
 
         rows = []
 
-        for rank, player in enumerate(sorted_players, start=1):
-            in_primary_id = player[0]
-            rating = player[1]['rating']
-            games_played = player[1]['games_played']
-            wins = player[1]['wins']
-            losses = player[1]['losses']
-            last_played = player[1]['last_played'].strftime('%Y-%m-%d')
-            avg_pick_order = player[1]['avg_pick_order']
-            display_name = get_display_name(in_primary_id)
+        for rank, (user_id, player) in enumerate(sorted_players, start=1):
+            rating = player.rating
+            games_played = player.games_played
+            wins = player.wins
+            losses = player.losses
+            last_played = player.last_played.strftime('%Y-%m-%d')
+            avg_pick_order = player.avg_pick_order
+            display_name = player.name
 
-            if verbose_output:
-                associated_ids = get_associated_ids(in_primary_id)
+            if self.verbose_output:
+                associated_ids = ",".join(player.secondary_ids)
                 row = [
                     rank,
                     display_name,
@@ -351,49 +280,49 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
             table.add_row(row)
 
         decay_settings = ""
-        if in_decay_enabled:
-            decay_settings = (f"decay_amount={decay_amount}, "
-                              f"grace_days={grace_days}, "
-                              f"max_decay_proportion={max_decay_proportion}")
+        if self.decay_enabled:
+            decay_settings = (f"decay_amount={self.decay_amount}, "
+                              f"grace_days={self.grace_days}, "
+                              f"max_decay_proportion={self.max_decay_proportion}")
 
         # Print the output to console
-        if verbose_output:
-            print(f"Input URL: {in_url}")
-            print(f"Server ID: {in_server_id}")
+        if self.verbose_output:
+            print(f"Input URL: {self.url}")
+            print(f"Server ID: {self.server_id}")
 
-        print(f"Games period: From {in_start_date_str} to {in_end_date_str}")
-        print(f"Games used: {games_used_count}")
+        print(f"Games period: From {start_date_str} to {end_date_str}")
+        print(f"Games used: {self.games_used_count}")
         print(table)
-        print(f"Sigma decay: {decay_settings if in_decay_enabled else 'Disabled'}")
-        print(f"Minimum games required: {in_min_games_required} ({len(filtered_players)} players filtered)")
+        print(f"Sigma decay: {decay_settings if self.decay_enabled else 'Disabled'}")
+        print(f"Minimum games required: {self.min_games_required} ({len(filtered_players)} players filtered)")
 
-        if in_top_x > 0:
-            print(f"Showing top {in_top_x} players ({cutoff_count} cutoff)")
+        if self.top_x > 0:
+            print(f"Showing top {self.top_x} players ({cutoff_count} cutoff)")
 
-        print(f"Ties discarded: {in_discard_ties}")
-        print(f"Aliased player/s: {', '.join(user_aliases.keys())}")
+        print(f"Ties discarded: {self.discard_ties}")
+        print(f"Aliased player/s: {', '.join(self.user_aliases.keys())}")
 
         # Save the text output to a text file if enabled
-        if write_txt:
+        if self.write_txt:
             with open("player_ratings.txt", "w") as text_file:
-                if verbose_output:
-                    text_file.write(f"Input URL: {in_url}\n")
-                    text_file.write(f"Server ID: {in_server_id}\n")
-                text_file.write(f"Games period: From {in_start_date_str} to {in_end_date_str}\n")
-                text_file.write(f"Games used: {games_used_count}\n")
+                if self.verbose_output:
+                    text_file.write(f"Input URL: {self.url}\n")
+                    text_file.write(f"Server ID: {self.server_id}\n")
+                text_file.write(f"Games period: From {start_date_str} to {end_date_str}\n")
+                text_file.write(f"Games used: {self.games_used_count}\n")
                 text_file.write(str(table))
-                text_file.write(f"\nRating decay: {decay_settings if in_decay_enabled else 'Disabled'}\n")
-                text_file.write(f"Minimum games required: {in_min_games_required} "
+                text_file.write(f"\nRating decay: {decay_settings if self.decay_enabled else 'Disabled'}\n")
+                text_file.write(f"Minimum games required: {self.min_games_required} "
                                 f"({len(filtered_players)} players filtered)\n")
-                if in_top_x > 0:
-                    text_file.write(f"Showing top {in_top_x} players ({cutoff_count} cutoff)\n")
-                text_file.write(f"Ties discarded: {in_discard_ties}\n")
-                text_file.write(f"Aliased player/s: {', '.join(user_aliases.keys())}\n")
+                if self.top_x > 0:
+                    text_file.write(f"Showing top {self.top_x} players ({cutoff_count} cutoff)\n")
+                text_file.write(f"Ties discarded: {self.discard_ties}\n")
+                text_file.write(f"Aliased player/s: {', '.join(self.user_aliases.keys())}\n")
 
         # Save the table to a CSV file if enabled
-        if write_csv:
+        if self.write_csv:
             with open("player_ratings.csv", "w") as csv_file:
-                if verbose_output:
+                if self.verbose_output:
                     csv_file.write("Rank,Name,Trueskill Rating (μ - 3*σ),μ (mu),σ (sigma),Games Played,"
                                    "Win/Loss,Last Played,Avg Pick Order,Discord ID/s\n")
                 else:
@@ -401,46 +330,97 @@ def display_ratings(in_server_id, in_start_date_str, in_end_date_str, in_min_gam
                                    "Win/Loss,Last Played,Avg Pick Order\n")
                 for row in rows:
                     csv_file.write(",".join(map(str, row)) + "\n")
-    except Exception as display_ratings_exception:
-        handle_error(display_ratings_exception, "Failed to display ratings")
 
+    def run(self):
+        start_date_str = datetime.fromtimestamp(int(self.start_date) / 1000, self.timezone).strftime('%Y-%m-%d')
+        end_date_str = datetime.now(self.timezone).strftime('%Y-%m-%d %I:%M %p %Z')
 
-def run():
-    try:
-        # Convert unix timestamps to a human-readable date string
-        start_date_str = datetime.fromtimestamp(int(time) / 1000, timezone).strftime('%Y-%m-%d')
-        end_date_str = datetime.now(timezone).strftime('%Y-%m-%d %I:%M %p %Z')
-
-        # Fetch or read game data
-        if json_file:
-            games = read_game_data_from_file(json_file)
+        if self.json_file:
+            games = self.read_game_data_from_file()
         else:
-            games = fetch_game_data(url)
+            games = self.fetch_game_data()
 
-        # Track dates when games are played
         played_dates = {}
 
         for game in games:
-            process_game(game, played_dates)
+            self.process_game(game, played_dates)
 
-        # Apply sigma decay for players on consecutive days they did not play, but games were played
-        previous_date = None
-        for date in sorted(played_dates.keys()):
-            participants = played_dates[date]
-            if previous_date:
-                for player_id in player_ratings:
-                    primary_id = get_primary_id(player_id)
-                    if primary_id not in participants:
-                        days_inactive = (date - player_ratings[primary_id]['last_played']).days
-                        if days_inactive > grace_days:
-                            apply_sigma_decay(player_ratings[primary_id], days_inactive)
-            previous_date = date
-
-        display_ratings(
-            server_id, start_date_str, end_date_str, min_games_required, discard_ties, url, decay_enabled, top_x)
-    except Exception as run_exception:
-        handle_error(run_exception, "Failed to run the main program")
+        self.apply_decay(played_dates)
+        self.display_ratings(start_date_str, end_date_str)
 
 
-# Run the program
-run()
+# Main execution
+def main():
+    try:
+        args = parser.parse_args()
+    except Exception as parse_args_exception:
+        handle_error(parse_args_exception, "Failed to parse command-line arguments")
+        return
+
+    try:
+        load_dotenv()
+    except Exception as load_dotenv_exception:
+        handle_error(load_dotenv_exception, "Failed to load environment variables from .env file")
+        return
+
+    try:
+        # Inputs (override with command-line arguments if provided)
+        domain = args.domain or os.getenv("DOMAIN")
+        server_id = args.server_id or os.getenv("SERVER_ID")
+        start_date = args.date_start or os.getenv("DATE_START")
+        timezone_in = args.timezone or os.getenv("TIMEZONE")
+        timezone = pytz.timezone(timezone_in)
+        user_aliases = json.loads(os.getenv("ALIASED_PLAYERS"))
+
+        min_games_required = args.min_games or int(os.getenv("MINIMUM_GAMES_REQUIRED"))
+        last_days_threshold = args.last_days_threshold or int(os.getenv("LAST_DAYS_THRESHOLD"))
+        min_games_last_days = args.min_games_last_days or int(os.getenv("MINIMUM_GAMES_LAST_DAYS"))
+        top_x = args.top_x or int(os.getenv("TOP_X_CUTOFF"))
+
+        discard_ties = args.discard_ties or os.getenv("DISCARD_TIES") == 'True'
+        decay_enabled = args.decay_enabled or os.getenv("DECAY_ENABLED") == 'True'
+        decay_amount = args.decay_amount or float(os.getenv("DECAY_AMOUNT"))
+        grace_days = args.grace_days or int(os.getenv("DECAY_GRACE_DAYS"))
+        max_decay_proportion = args.max_decay_proportion or float(os.getenv("MAX_DECAY_PROPORTION"))
+
+        default_sigma = args.ts_default_sigma or float(os.getenv("TS_DEFAULT_SIGMA"))
+        default_mu = args.ts_default_mu or float(os.getenv("TS_DEFAULT_MU"))
+
+        verbose_output = args.verbose_output or os.getenv("VERBOSE_OUTPUT") == 'True'
+        write_txt = args.write_txt or os.getenv("WRITE_TXT") == 'True'
+        write_csv = args.write_csv or os.getenv("WRITE_CSV") == 'True'
+        json_file = args.json_file or os.getenv("JSON_FILENAME")
+
+        processor = GameProcessor(domain, server_id, start_date, timezone, min_games_required, last_days_threshold,
+                                  min_games_last_days, discard_ties, decay_enabled, decay_amount, grace_days,
+                                  max_decay_proportion, default_sigma, default_mu, verbose_output, top_x, write_txt,
+                                  write_csv, json_file)
+        processor.user_aliases = user_aliases
+        processor.run()
+    except Exception as init_variables_exception:
+        handle_error(init_variables_exception, "Failed to initialize input variables")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--domain', type=str, help='API domain')
+    parser.add_argument('--server_id', type=str, help='Server ID')
+    parser.add_argument('--date_start', type=str, help='Start date in timestamp')
+    parser.add_argument('--timezone', type=str, help='Timezone')
+    parser.add_argument('--min_games', type=int, help='Minimum games required')
+    parser.add_argument('--last_days_threshold', type=int, help='Last days threshold')
+    parser.add_argument('--min_games_last_days', type=int, help='Minimum games in last days')
+    parser.add_argument('--discard_ties', action='store_true', help='Discard ties')
+    parser.add_argument('--decay_enabled', action='store_true', help='Enable sigma decay')
+    parser.add_argument('--decay_amount', type=float, help='Decay amount')
+    parser.add_argument('--grace_days', type=int, help='Grace days for decay')
+    parser.add_argument('--max_decay_proportion', type=float, help='Max decay proportion')
+    parser.add_argument('--ts_default_sigma', type=float, help='Default sigma for TrueSkill')
+    parser.add_argument('--ts_default_mu', type=float, help='Default mu for TrueSkill')
+    parser.add_argument('--verbose_output', action='store_true', help='Enable verbose output')
+    parser.add_argument('--top_x', type=int, default=0, help='Show top X players (0 for all)')
+    parser.add_argument('--write_txt', action='store_true', help='Write output to text file')
+    parser.add_argument('--write_csv', action='store_true', help='Write output to CSV file')
+    parser.add_argument('--json_file', type=str, help='Path to JSON file containing game data')
+
+    main()
