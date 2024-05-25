@@ -81,6 +81,7 @@ class GameProcessor:
         self.json_file = json_file
         self.url = f"{self.domain}/api/server/{self.server_id}/games/{self.start_date}"
         self.player_ratings = {}
+        self.primary_ids_cache = {}
         self.games_used_count = 0
         self.user_aliases = {}
         self.filtered_by_min_games = 0
@@ -103,9 +104,13 @@ class GameProcessor:
             handle_error(e, f"Failed to read game data from file {self.json_file}")
 
     def get_primary_id(self, user_id):
+        if user_id in self.primary_ids_cache:
+            return self.primary_ids_cache[user_id]
         for primary_name, aliases in self.user_aliases.items():
             if user_id in aliases:
+                self.primary_ids_cache[user_id] = primary_name
                 return primary_name
+        self.primary_ids_cache[user_id] = user_id
         return user_id
 
     def get_player(self, user_id, user_name):
