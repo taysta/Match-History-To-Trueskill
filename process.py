@@ -216,5 +216,7 @@ class GameProcessor:
         for game in games:
             self.process_game(game, played_dates)
 
-        self.apply_decay(played_dates)
+        if self.decay_enabled:
+            self.apply_decay(played_dates)
+
         display_ratings(self, start_date_str, end_date_str)
